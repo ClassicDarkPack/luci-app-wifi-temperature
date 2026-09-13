@@ -1,0 +1,27 @@
+#!/bin/sh
+
+printf '{'
+first=1
+max=-999999
+for hw in /sys/class/hwmon/hwmon*; do
+    [ -r "$hw/name" ] || continue
+    [ "$(cat "$hw/name" 2>/dev/null)" = "ath10k_hwmon" ] || continue
+    value=$(cat "$hw/temp1_input" 2>/dev/null)
+    case "$value" in
+        ''|*[!0-9-]*) continue ;;
+    esac
+    [ "$value" -ge -40000 ] 2>/dev/null || continue
+    [ "$value" -le 150000 ] 2>/dev/null || continue
+    [ "$value" -gt "$max" ] && max=$value
+    node=$(readlink -f "$hw/device" 2>/dev/null)
+    case "$node" in
+        */a000000.wifi*) key=radio24 ;;
+        */a800000.wifi*) key=radio5 ;;
+        *) key=unknown ;;
+    esac
+    [ "$first" -eq 1 ] || printf ','
+    printf '"%s":%s' "$key" "$value"
+    first=0
+done
+[ "$first" -eq 1 ] && printf '"device":null' || { printf ',"device":%s' "$max"; }
+printf ',"fallback":null}\n'
