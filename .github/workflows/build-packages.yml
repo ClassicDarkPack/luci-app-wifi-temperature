@@ -56,8 +56,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p localfeed/luci-app-wifi-temperature
-          cp -a Makefile htdocs root localfeed/luci-app-wifi-temperature/
+          mkdir -p localfeed/applications/luci-app-wifi-temperature
+          cp -a Makefile htdocs root localfeed/applications/luci-app-wifi-temperature/
           cd sdk
           if [ ! -f feeds.conf ]; then cp feeds.conf.default feeds.conf; fi
           printf '\nsrc-link wifitemp %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
