@@ -25,11 +25,13 @@
 
 **[رفتن به Releases](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/latest)** | **[گرفتن خروجی ساخت موفق از Actions](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/actions/runs/43191675491)**
 
-| نسخهٔ OpenWrt که در CI ساخته شده | فایل موردنیاز | دستور نصب |
+| نسخهٔ OpenWrt که در CI ساخته شده | دانلود مستقیم نسخهٔ v1.1.0 | ابزار نصب |
 | --- | --- | --- |
-| **23.05.6** | `.ipk` | `opkg` |
-| **24.10.4** | `.ipk` | `opkg` |
-| **25.12.6** | `.apk` | `apk` |
+| **23.05.6** | **[دانلود فایل IPK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-23.05.6-ipk__luci-app-wifi-temperature_1.1.0_all.ipk)** | `opkg` |
+| **24.10.4** | **[دانلود فایل IPK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-24.10.4-ipk__luci-app-wifi-temperature_1.1.0-r1_all.ipk)** | `opkg` |
+| **25.12.6** | **[دانلود فایل APK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-25.12.6-apk__luci-app-wifi-temperature-1.1.0-r1.apk)** | `apk` |
+
+**[بررسی صحت فایل‌ها (SHA256SUMS)](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/SHA256SUMS)** · برای نسخه‌های بعدی صفحهٔ [آخرین Release](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/latest) را ببین.
 
 این پکیج از نوع `all` ساخته می‌شود، اما **تشخیص دقیق رادیوها وابسته به سخت‌افزار** است. روی نسخه‌های دیگر OpenWrt یا روترهای دیگر، عملکرد سنسورها هنوز تأیید نشده است.
 
@@ -75,7 +77,7 @@ apk update
 apk add --allow-untrusted /tmp/*luci-app-wifi-temperature*.apk
 ```
 
-> مهم: قبل از اجرای دستور، فقط **یک فایل نصب مطابق الگو** در `/tmp/` داشته باش. `apk` با `opkg` فرق دارد. گزینهٔ `--allow-untrusted` برای نصب بستهٔ APK محلی بدون امضای مخزن استفاده می‌شود؛ فقط فایل مورداعتماد را نصب کن.
+> مهم: قبل از اجرای دستور، فقط **یک فایل نصب مطابق الگو** در `/tmp/` داشته باش. `apk` با `opkg` فرق دارد و پسوند APK در OpenWrt **به معنی اپ اندروید نیست**. گزینهٔ `--allow-untrusted` برای نصب بستهٔ APK محلی بدون امضای مخزن استفاده می‌شود؛ فقط فایل مورداعتماد را نصب کن.
 
 ### مرحلهٔ ۴: نمایش دما را ببین
 
@@ -151,7 +153,7 @@ apk del luci-app-wifi-temperature
 - دسترسی خواندن از طریق ACL مخصوص `rpcd` محدود شده است.
 - Workflow ساخت خودکار: [Build OpenWrt packages](.github/workflows/build-packages.yml)
 - خروجی‌ها با **SDK رسمی OpenWrt** ساخته می‌شوند؛ موفقیت ساخت به معنای تست واقعی سخت‌افزار نیست.
-- برای روش ساخت دستی با SDK، [README انگلیسی](README.md#️-build-from-source) را بخوان.
+- برای روش ساخت دستی با SDK، [README انگلیسی](README.md) را بخوان.
 
 ### منابع الهام و مطالعه
 
