@@ -26,7 +26,7 @@ jobs:
             format: apk
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install SDK host dependencies
         run: |
@@ -58,7 +58,53 @@ jobs:
           cd sdk
           ./scripts/feeds update luci
           ./scripts/feeds install -p luci luci-base luci-mod-status
+          echo 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' >> .config
           make defconfig
+          grep -q '^CONFIG_PACKAGE_luci-app-wifi-temperature=m
+
+      - name: Collect and validate package
+        shell: bash
+        env:
+          RELEASE: ${{ matrix.release }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find sdk/bin/packages -type f -name "luci-app-wifi-temperature*.${FORMAT}" -exec cp -v {} dist/ \;
+          test "$(find dist -maxdepth 1 -type f -name "*.${FORMAT}" | wc -l)" -gt 0
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -lh dist/
+
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi-temperature-openwrt-${{ matrix.release }}-${{ matrix.format }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wifi-temperature-openwrt-*
+          path: release-assets
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find release-assets -type f \( -name '*.ipk' -o -name '*.apk' \) -exec cp -v {} dist/ \;
+          (cd dist && sha256sum * > SHA256SUMS)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+ .config
           make package/luci-app-wifi-temperature/compile -j2 V=s
 
       - name: Collect and validate package
