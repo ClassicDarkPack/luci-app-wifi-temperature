@@ -7,22 +7,40 @@ return baseclass.extend({
 
     load: function() {
         return fs.exec('/usr/libexec/luci-wifi-temperature').then(function(res) {
-            try { return JSON.parse(res.stdout); }
-            catch (e) { return {}; }
+            if (res.code !== 0)
+                return {};
+
+            try {
+                return JSON.parse(res.stdout || '{}');
+            }
+            catch (e) {
+                return {};
+            }
+        }).catch(function() {
+            return {};
         });
     },
 
     render: function(data) {
-        var rows = [];
-        function add(label, value) {
-            rows.push(E('div', { 'class': 'tr' }, [
-                E('div', { 'class': 'td left', 'style': 'width:50%' }, [_(label)]),
-                E('div', { 'class': 'td left' }, [value == null ? _('Not available') : (value / 1000).toFixed(1) + ' °C'])
-            ]));
+        data = data || {};
+
+        function temperature(value) {
+            return (typeof value === 'number' && isFinite(value))
+                ? (value / 1000).toFixed(1) + ' °C'
+                : _('Not available');
         }
-        add('Device temperature', data.device);
-        add('Wi-Fi 2.4 GHz', data.radio24);
-        add('Wi-Fi 5 GHz', data.radio5);
-        return E('div', { 'class': 'table' }, rows);
+
+        function row(label, value) {
+            return E('div', { 'class': 'tr' }, [
+                E('div', { 'class': 'td left', 'style': 'width:50%' }, label),
+                E('div', { 'class': 'td left' }, temperature(value))
+            ]);
+        }
+
+        return E('div', { 'class': 'table' }, [
+            row(_('Highest Wi-Fi temperature'), data.device),
+            row(_('Wi-Fi 2.4 GHz'), data.radio24),
+            row(_('Wi-Fi 5 GHz'), data.radio5)
+        ]);
     }
 });
