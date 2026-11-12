@@ -23,7 +23,14 @@ jobs:
           - { release: '25.12.6', format: apk }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Validate package source
+        run: |
+          set -euo pipefail
+          sh -n root/usr/libexec/luci-wifi-temperature
+          python3 -m json.tool root/usr/share/rpcd/acl.d/luci-app-wifi-temperature.json > /dev/null
+          test -x root/usr/libexec/luci-wifi-temperature
 
       - name: Install SDK host dependencies
         run: |
@@ -52,17 +59,71 @@ jobs:
           mkdir -p localfeed/luci-app-wifi-temperature
           cp -a Makefile htdocs root localfeed/luci-app-wifi-temperature/
           cd sdk
-          if [ ! -f feeds.conf ]; then cp feeds.conf.default feeds.conf; fi
-          printf 'src-link wifi-temperature %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
+          cp -f feeds.conf.default feeds.conf
+          printf '\nsrc-link wifitemp %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
+          grep -F 'src-link wifitemp ' feeds.conf
           ./scripts/feeds update -a
           ./scripts/feeds install -p luci luci-base luci-mod-status
-          ./scripts/feeds install -p wifi-temperature luci-app-wifi-temperature
-          test -L package/feeds/wifi-temperature/luci-app-wifi-temperature
+          ./scripts/feeds install -p wifitemp luci-app-wifi-temperature
+          test -L package/feeds/wifitemp/luci-app-wifi-temperature
           make defconfig
           echo 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' >> .config
           make defconfig
-          grep -E '^CONFIG_PACKAGE_luci-app-wifi-temperature=' .config || true
-          make package/feeds/wifi-temperature/luci-app-wifi-temperature/compile -j2 V=s
+          if ! grep -Eq '^CONFIG_PACKAGE_luci-app-wifi-temperature=(m|y)
+          make package/feeds/wifitemp/luci-app-wifi-temperature/compile -j2 V=s
+
+      - name: Collect and validate package
+        shell: bash
+        env:
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find sdk/bin/packages -type f -name "luci-app-wifi-temperature*.${FORMAT}" -exec cp -v {} dist/ \;
+          test "$(find dist -maxdepth 1 -type f -name "*.${FORMAT}" | wc -l)" -gt 0
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -lh dist/
+
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi-temperature-openwrt-${{ matrix.release }}-${{ matrix.format }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wifi-temperature-openwrt-*
+          path: release-assets
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          while IFS= read -r -d '' pkg; do
+            artifact="${pkg#release-assets/}"
+            artifact="${artifact%%/*}"
+            cp -v "$pkg" "dist/${artifact}__${pkg##*/}"
+          done < <(find release-assets -type f \( -name '*.ipk' -o -name '*.apk' \) -print0)
+          test "$(find dist -type f | wc -l)" -gt 0
+          (cd dist && sha256sum * > SHA256SUMS)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+ .config; then
+            echo 'ERROR: wifi-temperature package was not enabled by SDK configuration' >&2
+            grep 'PACKAGE_luci-app-wifi-temperature' .config || true
+            exit 1
+          fi
+          make package/feeds/wifitemp/luci-app-wifi-temperature/compile -j2 V=s
 
       - name: Collect and validate package
         shell: bash
