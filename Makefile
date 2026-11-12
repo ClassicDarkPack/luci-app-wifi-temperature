@@ -14,3 +14,5 @@ LUCI_URL:=https://github.com/ClassicDarkPack/luci-app-wifi-temperature
 
 # luci.mk includes package.mk and installs htdocs/ and root/.
 include $(TOPDIR)/feeds/luci/luci.mk
+
+# call BuildPackage - OpenWrt buildroot package scanner signature
