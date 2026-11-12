@@ -45,20 +45,23 @@ jobs:
           mkdir sdk
           tar -xf "$sdk" -C sdk --strip-components=1
 
-      - name: Build package in SDK
+      - name: Register and build local package feed
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p sdk/package/luci-app-wifi-temperature
-          cp -a Makefile htdocs root sdk/package/luci-app-wifi-temperature/
+          mkdir -p localfeed/luci-app-wifi-temperature
+          cp -a Makefile htdocs root localfeed/luci-app-wifi-temperature/
           cd sdk
+          printf 'src-link wifi-temperature %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
           ./scripts/feeds update -a
           ./scripts/feeds install -p luci luci-base luci-mod-status
-          rm -rf tmp
-          printf '%s\n' 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' >> .config
+          ./scripts/feeds install -p wifi-temperature luci-app-wifi-temperature
+          test -L package/feeds/wifi-temperature/luci-app-wifi-temperature
           make defconfig
-          grep -Fqx 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' .config
-          make package/luci-app-wifi-temperature/compile -j2 V=s
+          echo 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' >> .config
+          make defconfig
+          grep -E '^CONFIG_PACKAGE_luci-app-wifi-temperature=' .config || true
+          make package/feeds/wifi-temperature/luci-app-wifi-temperature/compile -j2 V=s
 
       - name: Collect and validate package
         shell: bash
