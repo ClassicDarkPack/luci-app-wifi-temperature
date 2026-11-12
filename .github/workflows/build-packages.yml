@@ -62,6 +62,13 @@ jobs:
           if [ ! -f feeds.conf ]; then cp feeds.conf.default feeds.conf; fi
           printf '\nsrc-link wifitemp %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
           ./scripts/feeds update -a
+          echo 'Checking local feed package metadata:'
+          if ! grep -Fq 'Package: luci-app-wifi-temperature' feeds/wifitemp.index; then
+            echo 'Local package not found in generated feed index' >&2
+            echo 'Relevant Makefile scanner diagnostics:' >&2
+            find logs/feeds/wifitemp -name dump.txt -exec sh -c 'for f; do echo "=== $f"; tail -n 100 "$f"; done' sh {} + 2>/dev/null || true
+            exit 1
+          fi
           ./scripts/feeds install -p luci luci-base luci-mod-status
           ./scripts/feeds install -p wifitemp luci-app-wifi-temperature
           test -L package/feeds/wifitemp/luci-app-wifi-temperature
