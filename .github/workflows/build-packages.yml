@@ -31,7 +31,8 @@ jobs:
       - name: Install SDK host dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential curl file git libncurses-dev             python3 rsync unzip wget xz-utils zstd
+          sudo apt-get install -y build-essential curl file git libncurses-dev \
+            python3 rsync unzip wget xz-utils zstd
 
       - name: Download and verify official OpenWrt SDK
         shell: bash
@@ -41,7 +42,7 @@ jobs:
           set -euo pipefail
           base="https://downloads.openwrt.org/releases/${RELEASE}/targets/ipq40xx/generic"
           curl -fL --retry 3 "$base/sha256sums" -o sha256sums
-          sdk="$(awk '{n=$2; sub(/^\\*/, "", n); if (n ~ /^openwrt-sdk-.*Linux-x86_64\\.tar\\.(xz|zst)$/) {print n; exit}}' sha256sums)"
+          sdk="$(awk '{n=$2; sub(/^\*/, "", n); if (n ~ /^openwrt-sdk-.*Linux-x86_64\.tar\.(xz|zst)$/) {print n; exit}}' sha256sums)"
           test -n "$sdk"
           curl -fL --retry 3 "$base/$sdk" -o "$sdk"
           grep -F "$sdk" sha256sums | head -n 1 | sha256sum -c -
