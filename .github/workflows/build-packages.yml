@@ -52,6 +52,7 @@ jobs:
           mkdir -p localfeed/luci-app-wifi-temperature
           cp -a Makefile htdocs root localfeed/luci-app-wifi-temperature/
           cd sdk
+          if [ ! -f feeds.conf ]; then cp feeds.conf.default feeds.conf; fi
           printf 'src-link wifi-temperature %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
           ./scripts/feeds update -a
           ./scripts/feeds install -p luci luci-base luci-mod-status
