@@ -38,11 +38,13 @@ Find `DISTRIB_RELEASE`, then choose a matching package:
 
 ### Supported OpenWrt versions
 
-| OpenWrt build tested in CI | File to download | Package manager |
+| OpenWrt build tested in CI | Direct download for v1.1.0 | Package manager |
 | --- | --- | --- |
-| **23.05.6** | `.ipk` | `opkg` |
-| **24.10.4** | `.ipk` | `opkg` |
-| **25.12.6** | `.apk` | `apk` |
+| **23.05.6** | **[Download IPK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-23.05.6-ipk__luci-app-wifi-temperature_1.1.0_all.ipk)** | `opkg` |
+| **24.10.4** | **[Download IPK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-24.10.4-ipk__luci-app-wifi-temperature_1.1.0-r1_all.ipk)** | `opkg` |
+| **25.12.6** | **[Download APK](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/wifi-temperature-openwrt-25.12.6-apk__luci-app-wifi-temperature-1.1.0-r1.apk)** | `apk` |
+
+[🔐 SHA256 checksums for v1.1.0](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/download/v1.1.0/SHA256SUMS) · For newer packages, always check the [latest release](https://github.com/ClassicDarkPack/luci-app-wifi-temperature/releases/latest).
 
 The package contains only scripts and LuCI resources, so it is built with architecture `all`. **The radio hardware mapping is Gale-specific**; an architecture-independent file does not guarantee sensor support on every router. Other patch releases have not been individually verified here.
 
@@ -80,7 +82,7 @@ apk update
 apk add --allow-untrusted /tmp/*luci-app-wifi-temperature*.apk
 ```
 
-> Keep **only one matching package** in `/tmp` before using these wildcard commands. `--allow-untrusted` is needed for a locally built/unsigned APK; only install packages you trust. Never install an APK with `opkg` or an IPK with `apk`.
+> Keep **only one matching package** in `/tmp` before using these wildcard commands. `--allow-untrusted` is needed for a locally built/unsigned APK; only install packages you trust. Never install an APK with `opkg` or an IPK with `apk`. An OpenWrt `.apk` is **not** an Android app.
 
 ### 5. Open the widget
 
