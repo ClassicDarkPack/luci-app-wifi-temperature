@@ -1,10 +1,10 @@
 {
   "luci-app-wifi-temperature": {
-    "description": "Allow LuCI to read Wi-Fi radio temperatures",
+    "description": "Read Wi-Fi hardware temperatures on LuCI Overview",
     "read": {
-      "exec": [
-        "/usr/libexec/luci-wifi-temperature"
-      ]
+      "file": {
+        "/usr/libexec/luci-wifi-temperature": [ "exec" ]
+      }
     }
   }
 }

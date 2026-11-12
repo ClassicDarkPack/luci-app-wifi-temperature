@@ -1,27 +1,38 @@
 #!/bin/sh
+# Return temperature readings in millidegrees Celsius as JSON.
+# Only the fixed, known hardware sensor paths are accessed.
 
-printf '{'
-first=1
-max=-999999
+radio24=null
+radio5=null
+device=null
+max=-40001
+
 for hw in /sys/class/hwmon/hwmon*; do
-    [ -r "$hw/name" ] || continue
-    [ "$(cat "$hw/name" 2>/dev/null)" = "ath10k_hwmon" ] || continue
-    value=$(cat "$hw/temp1_input" 2>/dev/null)
+    [ -r "$hw/name" ] && [ -r "$hw/temp1_input" ] || continue
+
+    IFS= read -r sensor < "$hw/name" || continue
+    case "$sensor" in
+        ath10k_hwmon|ath11k_hwmon) ;;
+        *) continue ;;
+    esac
+
+    IFS= read -r value < "$hw/temp1_input" || continue
     case "$value" in
         ''|*[!0-9-]*) continue ;;
     esac
     [ "$value" -ge -40000 ] 2>/dev/null || continue
     [ "$value" -le 150000 ] 2>/dev/null || continue
-    [ "$value" -gt "$max" ] && max=$value
-    node=$(readlink -f "$hw/device" 2>/dev/null)
-    case "$node" in
-        */a000000.wifi*) key=radio24 ;;
-        */a800000.wifi*) key=radio5 ;;
-        *) key=unknown ;;
+
+    if [ "$value" -gt "$max" ]; then
+        max=$value
+        device=$value
+    fi
+
+    path=$(readlink -f "$hw/device" 2>/dev/null)
+    case "$path" in
+        */a000000.wifi|*/a000000.wifi/*) radio24=$value ;;
+        */a800000.wifi|*/a800000.wifi/*) radio5=$value ;;
     esac
-    [ "$first" -eq 1 ] || printf ','
-    printf '"%s":%s' "$key" "$value"
-    first=0
 done
-[ "$first" -eq 1 ] && printf '"device":null' || { printf ',"device":%s' "$max"; }
-printf ',"fallback":null}\n'
+
+printf '{"device":%s,"radio24":%s,"radio5":%s}\n' "$device" "$radio24" "$radio5"

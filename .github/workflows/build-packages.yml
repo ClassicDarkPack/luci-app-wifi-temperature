@@ -1,0 +1,130 @@
+name: Build OpenWrt packages
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: OpenWrt ${{ matrix.release }} (${{ matrix.format }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { release: '23.05.6', format: ipk }
+          - { release: '24.10.4', format: ipk }
+          - { release: '25.12.6', format: apk }
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate package source
+        run: |
+          set -euo pipefail
+          sh -n root/usr/libexec/luci-wifi-temperature
+          python3 -m json.tool root/usr/share/rpcd/acl.d/luci-app-wifi-temperature.json > /dev/null
+          test -x root/usr/libexec/luci-wifi-temperature
+
+      - name: Install SDK host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl file git libncurses-dev python3 rsync unzip wget xz-utils zstd
+
+      - name: Download and verify official OpenWrt SDK
+        shell: bash
+        env:
+          RELEASE: ${{ matrix.release }}
+        run: |
+          set -euo pipefail
+          base="https://downloads.openwrt.org/releases/${RELEASE}/targets/ipq40xx/generic"
+          curl -fL --retry 3 "$base/sha256sums" -o sha256sums
+          sdk="$(awk '{n=$2; sub(/^\*/, "", n); if (n ~ /^openwrt-sdk-.*Linux-x86_64\.tar\.(xz|zst)$/) {print n; exit}}' sha256sums)"
+          test -n "$sdk"
+          curl -fL --retry 3 "$base/$sdk" -o "$sdk"
+          grep -F "$sdk" sha256sums | head -n 1 | sha256sum -c -
+          mkdir sdk
+          tar -xf "$sdk" -C sdk --strip-components=1
+
+      - name: Register and build local package feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p localfeed/applications/luci-app-wifi-temperature
+          cp -a Makefile htdocs root localfeed/applications/luci-app-wifi-temperature/
+          cd sdk
+          if [ ! -f feeds.conf ]; then cp feeds.conf.default feeds.conf; fi
+          printf '\nsrc-link wifitemp %s/localfeed\n' "$GITHUB_WORKSPACE" >> feeds.conf
+          ./scripts/feeds update -a
+          echo 'Checking local feed package metadata:'
+          if ! grep -Fq 'Package: luci-app-wifi-temperature' feeds/wifitemp.index; then
+            echo 'Local package not found in generated feed index' >&2
+            echo 'Relevant Makefile scanner diagnostics:' >&2
+            find logs/feeds/wifitemp -name dump.txt -exec sh -c 'for f; do echo "=== $f"; tail -n 100 "$f"; done' sh {} + 2>/dev/null || true
+            exit 1
+          fi
+          ./scripts/feeds install -p luci luci-base luci-mod-status
+          ./scripts/feeds install -p wifitemp luci-app-wifi-temperature
+          test -L package/feeds/wifitemp/luci-app-wifi-temperature
+          make defconfig
+          echo 'CONFIG_PACKAGE_luci-app-wifi-temperature=m' >> .config
+          make defconfig
+          if ! grep -Eq '^CONFIG_PACKAGE_luci-app-wifi-temperature=(m|y)$' .config; then
+            echo 'ERROR: SDK did not enable the local package' >&2
+            grep -F 'CONFIG_PACKAGE_luci-app-wifi-temperature' .config || true
+            exit 1
+          fi
+          make package/feeds/wifitemp/luci-app-wifi-temperature/compile -j2 V=s
+
+      - name: Collect and validate package
+        shell: bash
+        env:
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find sdk/bin/packages -type f -name "luci-app-wifi-temperature*.${FORMAT}" -exec cp -v {} dist/ \;
+          test "$(find dist -maxdepth 1 -type f -name "*.${FORMAT}" | wc -l)" -gt 0
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -lh dist/
+
+      - name: Upload installable package
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifi-temperature-openwrt-${{ matrix.release }}-${{ matrix.format }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wifi-temperature-openwrt-*
+          path: release-assets
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          while IFS= read -r -d '' pkg; do
+            artifact="${pkg#release-assets/}"
+            artifact="${artifact%%/*}"
+            cp -v "$pkg" "dist/${artifact}__${pkg##*/}"
+          done < <(find release-assets -type f \( -name '*.ipk' -o -name '*.apk' \) -print0)
+          test "$(find dist -type f | wc -l)" -gt 0
+          (cd dist && sha256sum * > SHA256SUMS)
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
